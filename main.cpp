@@ -1,303 +1,159 @@
-#include <SDL.h>
 #include <iostream>
-#include <limits>
-#include <time.h>
-#include <string>
+#include <ctime>
+#include <cstdlib>
 using namespace std;
 
-const int SCREEN_WIDTH = 910;
-const int SCREEN_HEIGHT = 750;
-const int arrSize = 130;
-const int rectSize = 7;
-
+const int arrSize = 20;  // Reduced size for faster testing in online compilers
 int arr[arrSize];
-int Barr[arrSize];
 
-SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
-bool complete = false;
-
-bool init() {
-    bool success = true;
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        cout << "Couldn't initialize SDL. SDL_Error: " << SDL_GetError();
-        success = false;
-    } else {
-        if (!(SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1"))) {
-            cout << "Warning: Linear Texture Filtering not enabled.\n";
-        }
-        window = SDL_CreateWindow("Sorting Visualizer", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-        if (window == NULL) {
-            cout << "Couldn't create window. SDL_Error: " << SDL_GetError();
-            success = false;
-        } else {
-            renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-            if (renderer == NULL) {
-                cout << "Couldn't create renderer. SDL_Error: " << SDL_GetError();
-                success = false;
-            }
-        }
+void printArray() {
+    for (int i = 0; i < arrSize; i++) {
+        cout << arr[i] << " ";
     }
-    return success;
+    cout << endl;
 }
 
-void close() {
-    SDL_DestroyRenderer(renderer);
-    renderer = NULL;
-    SDL_DestroyWindow(window);
-    window = NULL;
-    SDL_Quit();
+void randomizeArray() {
+    srand((unsigned)time(NULL));
+    for (int i = 0; i < arrSize; i++) {
+        arr[i] = rand() % 100;  // Limit numbers for readability
+    }
+    cout << "New random array generated: ";
+    printArray();
 }
 
-void visualize(int x = -1, int y = -1, int z = -1) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-    SDL_RenderClear(renderer);
-    int j = 0;
-    for (int i = 0; i <= SCREEN_WIDTH - rectSize; i += rectSize) {
-        SDL_PumpEvents();
-        SDL_Rect rect = {i, 0, rectSize, arr[j]};
-        if (complete) {
-            SDL_SetRenderDrawColor(renderer, 100, 180, 100, 0);
-            SDL_RenderDrawRect(renderer, &rect);
-        } else if (j == x || j == z) {
-            SDL_SetRenderDrawColor(renderer, 100, 180, 100, 0);
-            SDL_RenderFillRect(renderer, &rect);
-        } else if (j == y) {
-            SDL_SetRenderDrawColor(renderer, 165, 105, 189, 0);
-            SDL_RenderFillRect(renderer, &rect);
-        } else {
-            SDL_SetRenderDrawColor(renderer, 170, 183, 184, 0);
-            SDL_RenderDrawRect(renderer, &rect);
-        }
-        j++;
-    }
-    SDL_RenderPresent(renderer);
-}
-
-int partition_array(int a[], int si, int ei) {
-    int count_small = 0;
-    for (int i = (si + 1); i <= ei; i++) {
-        if (a[i] <= a[si]) {
-            count_small++;
-        }
-    }
-    int c = si + count_small;
-    int temp = a[c];
-    a[c] = a[si];
-    a[si] = temp;
-    visualize(c, si);
-    int i = si, j = ei;
-    while (i < c && j > c) {
-        if (a[i] <= a[c]) {
-            i++;
-        } else if (a[j] > a[c]) {
-            j--;
-        } else {
-            int temp_1 = a[j];
-            a[j] = a[i];
-            a[i] = temp_1;
-            visualize(i, j);
-            SDL_Delay(70);
-            i++;
-            j--;
-        }
-    }
-    return c;
-}
-
-void quickSort(int a[], int si, int ei) {
-    if (si >= ei) {
-        return;
-    }
-    int c = partition_array(a, si, ei);
-    quickSort(a, si, c - 1);
-    quickSort(a, c + 1, ei);
-}
-
-void merge2SortedArrays(int a[], int si, int ei) {
-    int size_output = (ei - si) + 1;
-    int* output = new int[size_output];
-    int mid = (si + ei) / 2;
-    int i = si, j = mid + 1, k = 0;
-    while (i <= mid && j <= ei) {
-        if (a[i] <= a[j]) {
-            output[k] = a[i];
-            visualize(i, j);
-            i++;
-            k++;
-        } else {
-            output[k] = a[j];
-            visualize(i, j);
-            j++;
-            k++;
-        }
-    }
-    while (i <= mid) {
-        output[k] = a[i];
-        visualize(-1, i);
-        i++;
-        k++;
-    }
-    while (j <= ei) {
-        output[k] = a[j];
-        visualize(-1, j);
-        j++;
-        k++;
-    }
-    int x = 0;
-    for (int l = si; l <= ei; l++) {
-        a[l] = output[x];
-        visualize(l);
-        SDL_Delay(15);
-        x++;
-    }
-    delete[] output;
-}
-
-void mergeSort(int a[], int si, int ei) {
-    if (si >= ei) {
-        return;
-    }
-    int mid = (si + ei) / 2;
-    mergeSort(a, si, mid);
-    mergeSort(a, mid + 1, ei);
-    merge2SortedArrays(a, si, ei);
-}
-
-void bubbleSort() {
+void selectionSort() {
     for (int i = 0; i < arrSize - 1; i++) {
-        for (int j = 0; j < arrSize - 1 - i; j++) {
-            if (arr[j + 1] < arr[j]) {
-                int temp = arr[j];
-                arr[j] = arr[j + 1];
-                arr[j + 1] = temp;
-                visualize(j + 1, j, arrSize - i);
+        int minIndex = i;
+        for (int j = i + 1; j < arrSize; j++) {
+            if (arr[j] < arr[minIndex]) {
+                minIndex = j;
             }
-            SDL_Delay(1);
         }
+        swap(arr[i], arr[minIndex]);
+        cout << "After sorting index " << i << ": ";
+        printArray();
     }
 }
 
 void insertionSort() {
     for (int i = 1; i < arrSize; i++) {
+        int key = arr[i];
         int j = i - 1;
-        int temp = arr[i];
-        while (j >= 0 && arr[j] > temp) {
+        while (j >= 0 && arr[j] > key) {
             arr[j + 1] = arr[j];
             j--;
-            visualize(i, j + 1);
-            SDL_Delay(5);
         }
-        arr[j + 1] = temp;
+        arr[j + 1] = key;
+        cout << "After inserting index " << i << ": ";
+        printArray();
     }
 }
 
-void selectionSort() {
-    int minIndex;
+void bubbleSort() {
     for (int i = 0; i < arrSize - 1; i++) {
-        minIndex = i;
-        for (int j = i + 1; j < arrSize; j++) {
-            if (arr[j] < arr[minIndex]) {
-                minIndex = j;
-                visualize(i, minIndex);
+        for (int j = 0; j < arrSize - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr[j], arr[j + 1]);
             }
-            SDL_Delay(1);
         }
-        int temp = arr[i];
-        arr[i] = arr[minIndex];
-        arr[minIndex] = temp;
+        cout << "After pass " << i + 1 << ": ";
+        printArray();
     }
 }
 
-void loadArr() {
-    memcpy(arr, Barr, sizeof(int) * arrSize);
+void merge(int arr[], int left, int mid, int right) {
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+    int L[n1], R[n2];
+    
+    for (int i = 0; i < n1; i++) L[i] = arr[left + i];
+    for (int i = 0; i < n2; i++) R[i] = arr[mid + 1 + i];
+    
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        if (L[i] <= R[j]) arr[k++] = L[i++];
+        else arr[k++] = R[j++];
+    }
+    
+    while (i < n1) arr[k++] = L[i++];
+    while (j < n2) arr[k++] = R[j++];
 }
 
-void randomizeAndSaveArray() {
-    unsigned int seed = (unsigned)time(NULL);
-    srand(seed);
-    for (int i = 0; i < arrSize; i++) {
-        int random = rand() % (SCREEN_HEIGHT);
-        Barr[i] = random;
+void mergeSort(int arr[], int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+        mergeSort(arr, left, mid);
+        mergeSort(arr, mid + 1, right);
+        merge(arr, left, mid, right);
+        cout << "After merging from " << left << " to " << right << ": ";
+        printArray();
     }
 }
 
-void execute() {
-    if (!init()) {
-        cout << "SDL Initialization Failed.\n";
-    } else {
-        randomizeAndSaveArray();
-        loadArr();
-        SDL_Event e;
-        bool quit = false;
-        while (!quit) {
-            while (SDL_PollEvent(&e) != 0) {
-                if (e.type == SDL_QUIT) {
-                    quit = true;
-                    complete = false;
-                } else if (e.type == SDL_KEYDOWN) {
-                    switch (e.key.keysym.sym) {
-                        case (SDLK_q):
-                            quit = true;
-                            complete = false;
-                            cout << "\nEXITING SORTING VISUALIZER.\n";
-                            break;
-                        case (SDLK_0):
-                            randomizeAndSaveArray();
-                            complete = false;
-                            loadArr();
-                            cout << "\nNEW RANDOM LIST GENERATED.\n";
-                            break;
-                        case (SDLK_1):
-                            loadArr();
-                            cout << "\nSELECTION SORT STARTED.\n";
-                            complete = false;
-                            selectionSort();
-                            complete = true;
-                            cout << "\nSELECTION SORT COMPLETE.\n";
-                            break;
-                        case (SDLK_2):
-                            loadArr();
-                            cout << "\nINSERTION SORT STARTED.\n";
-                            complete = false;
-                            insertionSort();
-                            complete = true;
-                            cout << "\nINSERTION SORT COMPLETE.\n";
-                            break;
-                        case (SDLK_3):
-                            loadArr();
-                            cout << "\nBUBBLE SORT STARTED.\n";
-                            complete = false;
-                            bubbleSort();
-                            complete = true;
-                            cout << "\nBUBBLE SORT COMPLETE.\n";
-                            break;
-                        case (SDLK_4):
-                            loadArr();
-                            cout << "\nMERGE SORT STARTED.\n";
-                            complete = false;
-                            mergeSort(arr, 0, arrSize - 1);
-                            complete = true;
-                            cout << "\nMERGE SORT COMPLETE.\n";
-                            break;
-                        case (SDLK_5):
-                            loadArr();
-                            cout << "\nQUICK SORT STARTED.\n";
-                            complete = false;
-                            quickSort(arr, 0, arrSize - 1);
-                            complete = true;
-                            cout << "\nQUICK SORT COMPLETE.\n";
-                            break;
-                    }
-                }
-            }
-            visualize();
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = (low - 1);
+    for (int j = low; j <= high - 1; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            swap(arr[i], arr[j]);
         }
     }
-    close();
+    swap(arr[i + 1], arr[high]);
+    return (i + 1);
 }
 
-int main(int argc, char* args[]) {
-    execute();
+void quickSort(int arr[], int low, int high) {
+    if (low < high) {
+        int pi = partition(arr, low, high);
+        cout << "Pivot sorted at index " << pi << ": ";
+        printArray();
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+    }
+}
+
+int main() {
+    randomizeArray();
+    int choice;
+    
+    cout << "Choose sorting algorithm:\n";
+    cout << "1. Selection Sort\n";
+    cout << "2. Insertion Sort\n";
+    cout << "3. Bubble Sort\n";
+    cout << "4. Merge Sort\n";
+    cout << "5. Quick Sort\n";
+    cout << "Enter choice (1-5): ";
+    cin >> choice;
+    
+    switch (choice) {
+        case 1:
+            cout << "\nSelection Sort:\n";
+            selectionSort();
+            break;
+        case 2:
+            cout << "\nInsertion Sort:\n";
+            insertionSort();
+            break;
+        case 3:
+            cout << "\nBubble Sort:\n";
+            bubbleSort();
+            break;
+        case 4:
+            cout << "\nMerge Sort:\n";
+            mergeSort(arr, 0, arrSize - 1);
+            break;
+        case 5:
+            cout << "\nQuick Sort:\n";
+            quickSort(arr, 0, arrSize - 1);
+            break;
+        default:
+            cout << "Invalid choice.\n";
+            break;
+    }
+    
+    cout << "Final sorted array: ";
+    printArray();
     return 0;
 }
